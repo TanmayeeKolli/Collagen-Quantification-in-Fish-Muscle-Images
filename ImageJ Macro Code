@@ -1,0 +1,75 @@
+inputFolder = "C:/Users/tanuk/Downloads/AllFish_NoScaleBar_batch1/AllFish_NoScaleBar_batch1/";
+outputFilePath = "C:/Tanmayee's Folder/UF/Tissue-microbe interactions lab/fish project/collagen_ratios.csv";
+
+list = getFileList(inputFolder);
+setBatchMode(true); 
+
+// Check if the file exists and write the header only if it doesn't
+if (!File.exists(outputFilePath)) {
+    File.append("Image Name,Collagen Ratio (%)\n", outputFilePath);
+}
+
+
+
+for (i = 0; i < list.length; i++) {
+    imageName = list[i];
+    
+    // Process only .tif files
+    if (endsWith(imageName, ".tif")) {
+        // Open the image
+        open(inputFolder + imageName);
+        
+
+//Part 1: Collagen Pixel
+
+name=getTitle();
+baseName= replace(name, ".tif", "");
+run("Duplicate..."," ");
+duplicateName= baseName + "-1.tif";
+selectImage(name);
+
+run("Colour Deconvolution2", "vectors=[FastRed FastBlue DAB] output=8bit_Transmittance simulated cross show hide");
+decon_name= getTitle();
+selectImage(decon_name);
+selectImage(decon_name);
+selectImage(decon_name);
+close;
+close;
+setAutoThreshold("Default no-reset");
+//run("Threshold...");
+setThreshold(0, 188, "raw");
+run("Measure");
+
+collagen_pixels = getResult("Area", nResults() - 1);
+print(collagen_pixels);
+
+
+//Part 2: Total pixel from ROI
+
+selectImage(duplicateName);
+run("8-bit");
+setAutoThreshold("Default no-reset");
+setThreshold(0, 188);
+setOption("BlackBackground", true);
+run("Convert to Mask");
+run("Invert");
+
+// Get the histogram of the processed image
+getHistogram(values, counts, 256);
+totalPixelCount = counts[0];  // Total black pixels (background)
+
+// Perform division: collagen pixels / total pixels
+ratio = (collagen_pixels / totalPixelCount) * 100;
+
+// Append the result to the CSV file
+File.append(name + "," + ratio + "\n", outputFilePath);
+
+// Display confirmation in the log
+print("Collagen Ratio for " + name + ": " + ratio + "% saved to " + outputFilePath);
+
+run("Close All"); }}
+
+// End Batch processing
+
+setBatchMode(false);
+print("Processing complete!")
